@@ -550,17 +550,6 @@ tr:last-child td{border-bottom:none}
 })();
 </script>
 <script>
-var PK=sessionStorage.getItem('publicDataServiceKey')||'';
-
-function ensurePublicDataKey(){
-  if(PK)return true;
-  var key=window.prompt('공공데이터포털에서 발급받은 일반 인증키(Decoding)를 입력하세요.\n키는 현재 브라우저 탭에만 임시 저장됩니다.');
-  if(!key||!key.trim())return false;
-  PK=key.trim();
-  sessionStorage.setItem('publicDataServiceKey',PK);
-  return true;
-}
-
     // 분양 상태 판단 함수
     function getBunyangStatus(d){
       var today = new Date().toISOString().slice(0,10);
@@ -889,7 +878,6 @@ function dropCanceled(rows, label){
 async function runAnalysis(){
   if(!curLat){setStatus('err','사업지 주소를 먼저 검색할 것');return;}
   if(!curLawd){setStatus('err','잠시 후 다시 시도해주세요.');return;}
-  if(!ensurePublicDataKey()){setStatus('err','분석하려면 공공데이터 API 인증키가 필요합니다.');return;}
   var start=getYm('start'),end=getYm('end'),type=document.getElementById('selType').value;
   if(parseInt(start)>parseInt(end)){setStatus('err','시작 기간이 종료보다 늦습니다.');return;}
 
@@ -925,24 +913,24 @@ async function runAnalysis(){
         if(type!=='oft'){
           setProg(Math.round(done/total*50),'아파트 매매 '+ym+' ('+lawd+')');
           var lb1='아파트매매 '+lawd+' '+ym;
-          var r1=await fetchAllItems('https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey='+encodeURIComponent(PK)+'&LAWD_CD='+lawd+'&DEAL_YMD='+ym,
+          var r1=await fetchAllItems('/api/public-data?dataset=apt-trade&lawd='+encodeURIComponent(lawd)+'&ym='+encodeURIComponent(ym),
             ['aptNm','umdNm','dealAmount','excluUseAr','floor','dealYear','dealMonth','dealDay','buildYear','cdealType','cdealDay'],lb1);
           dropCanceled(r1,lb1).forEach(d=>{d._type='아파트';d._ym=ym;allTrade.push(d);});done++;
           setProg(Math.round(done/total*50),'아파트 전월세 '+ym+' ('+lawd+')');
           var lb2='아파트전월세 '+lawd+' '+ym;
-          var r2=await fetchAllItems('https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent?serviceKey='+encodeURIComponent(PK)+'&LAWD_CD='+lawd+'&DEAL_YMD='+ym,
+          var r2=await fetchAllItems('/api/public-data?dataset=apt-rent&lawd='+encodeURIComponent(lawd)+'&ym='+encodeURIComponent(ym),
             ['aptNm','umdNm','deposit','monthlyRent','excluUseAr','floor','dealYear','dealMonth','dealDay','buildYear','cdealType','cdealDay'],lb2);
           dropCanceled(r2,lb2).forEach(d=>{d._type='아파트';d._ym=ym;d._rt=parseInt(d.monthlyRent||'0')>0?'월세':'전세';allRent.push(d);});done++;
         }
         if(type!=='apt'){
           setProg(Math.round(done/total*50),'오피스텔 매매 '+ym+' ('+lawd+')');
           var lb3='오피스텔매매 '+lawd+' '+ym;
-          var r3=await fetchAllItems('https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade?serviceKey='+encodeURIComponent(PK)+'&LAWD_CD='+lawd+'&DEAL_YMD='+ym,
+          var r3=await fetchAllItems('/api/public-data?dataset=offi-trade&lawd='+encodeURIComponent(lawd)+'&ym='+encodeURIComponent(ym),
             ['offiNm','umdNm','dealAmount','excluUseAr','floor','dealYear','dealMonth','dealDay','buildYear','cdealType','cdealDay'],lb3);
           dropCanceled(r3,lb3).forEach(d=>{d.aptNm=d.offiNm;d._type='오피스텔';d._ym=ym;allTrade.push(d);});done++;
           setProg(Math.round(done/total*50),'오피스텔 전월세 '+ym+' ('+lawd+')');
           var lb4='오피스텔전월세 '+lawd+' '+ym;
-          var r4=await fetchAllItems('https://apis.data.go.kr/1613000/RTMSDataSvcOffiRent/getRTMSDataSvcOffiRent?serviceKey='+encodeURIComponent(PK)+'&LAWD_CD='+lawd+'&DEAL_YMD='+ym,
+          var r4=await fetchAllItems('/api/public-data?dataset=offi-rent&lawd='+encodeURIComponent(lawd)+'&ym='+encodeURIComponent(ym),
             ['offiNm','umdNm','deposit','monthlyRent','excluUseAr','floor','dealYear','dealMonth','dealDay','buildYear','cdealType','cdealDay'],lb4);
           dropCanceled(r4,lb4).forEach(d=>{d.aptNm=d.offiNm;d._type='오피스텔';d._ym=ym;d._rt=parseInt(d.monthlyRent||'0')>0?'월세':'전세';allRent.push(d);});done++;
         }
@@ -1412,9 +1400,8 @@ async function loadBunyang(){
 
     // 최대 5페이지(500건)까지 조회
     while(hasMore && page <= 5){
-      var url = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail' +
-        '?page='+page+'&perPage='+perPage+
-        '&serviceKey='+encodeURIComponent(PK);
+      var url = '/api/public-data?dataset=subscription' +
+        '&page='+page+'&perPage='+perPage;
       
       var res = await fetch(url);
       var json = await res.json();
