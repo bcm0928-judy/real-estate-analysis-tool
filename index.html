@@ -676,7 +676,7 @@ function initMapSdk(){
   var timer=setTimeout(function(){timedOut=true;showMapLoadError();},10000);
   var script=document.createElement('script');
   script.id='kakaoMapSdk';
-  script.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey=3b8ceeb794701548d9671d246213596a&autoload=false&libraries=services,clusterer';
+  script.src='https://dapi.kakao.com/v2/maps/sdk.js?appkey=a6b716500dda44c0c5ca331faccc6046&autoload=false&libraries=services,clusterer';
   script.onload=function(){
     if(timedOut)return;
     if(typeof kakao==='undefined'||!kakao.maps){clearTimeout(timer);showMapLoadError();return;}
