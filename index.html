@@ -99,6 +99,7 @@ button{font-family:inherit}
 .hrow{display:flex;align-items:center;gap:5px;min-width:0}
 .h-band-right{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
 .filter-toggle{display:none}
+.mobile-run-band{display:none}
 
 /* 입력 */
 .hi{
@@ -393,14 +394,16 @@ tr:last-child td{border-bottom:none}
   .h-num{font-size:23px}
   .h-title{font-size:18px}
   .h-rules{padding:7px 12px 0}
-  .h-bands{margin-top:8px}
+  .h-bands{margin-top:8px;position:relative}
   .h-band{padding:9px 12px;gap:9px;align-items:start}
   .primary-band{display:grid;grid-template-columns:minmax(0,1fr)}
   .filter-band{display:none;grid-template-columns:minmax(0,1fr)}
   .header.filters-open .filter-band{
-    display:grid;position:fixed;left:0;right:0;bottom:0;z-index:650;
-    max-height:72dvh;overflow-y:auto;background:var(--ui-chrome);
-    border-top:2px solid var(--ui-accent);padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    display:grid;position:relative;z-index:2;
+    max-height:min(48dvh,420px);overflow-y:auto;background:#fff;
+    margin:0 12px 8px;padding:12px;
+    border:1px solid var(--ui-line-strong);border-top:2px solid var(--ui-accent);
+    box-shadow:0 8px 18px rgba(27,53,85,.12);
   }
   .h-divider{display:none}
   .address-group,.radius-group,.action-group,.area-group,.price-group,.options-group{grid-column:1/-1}
@@ -417,10 +420,26 @@ tr:last-child td{border-bottom:none}
   .area-group .ppbtn,.price-group .ppbtn{flex:1 1 54px}
   .hbtn,.rbtn,.ppbtn{min-height:34px}
   .hbtn-run{height:36px;padding-inline:16px}
-  .filter-toggle{display:inline-flex;align-items:center;justify-content:center;height:36px}
-  .action-group{width:100%;margin-left:0;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px;align-items:center}
+  #runBtn{display:none}
+  .filter-toggle{
+    display:inline-flex;align-items:center;justify-content:flex-start;width:100%;height:36px;
+    padding-inline:12px;background:#fff;border-color:var(--ui-line-strong);color:var(--ui-ink);
+  }
+  .filter-toggle::after{
+    content:"";width:7px;height:7px;margin-left:auto;
+    border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+    transform:rotate(45deg);transition:transform var(--dur) var(--ease);
+  }
+  .header.filters-open .filter-toggle::after{transform:rotate(225deg)}
+  .action-group{width:100%;margin-left:0;display:grid;grid-template-columns:minmax(0,1fr);gap:7px;align-items:center}
   .action-group .hprog{grid-column:1/-1;width:100%;min-width:0}
   .action-group .hstatus{max-width:none;min-width:0;overflow-wrap:anywhere}
+  .action-group #areaTag{justify-self:start}
+  .mobile-run-band{
+    display:flex;padding:9px 12px calc(10px + env(safe-area-inset-bottom));
+    background:#fff;border-top:1px solid var(--ui-line-strong);
+  }
+  .mobile-run-band .hbtn-run{width:100%;height:42px}
   .options-group{width:100%;margin-left:0;flex-wrap:wrap;gap:8px 14px}
   .options-group label{min-height:28px}
   .main{position:relative}
@@ -460,11 +479,6 @@ tr:last-child td{border-bottom:none}
 
 @media (max-width:420px){
   .h-title{font-size:17px}
-  .action-group{grid-template-columns:minmax(0,1fr) auto}
-  .action-group .filter-toggle{grid-column:1}
-  .action-group .hbtn-run{grid-column:2;grid-row:1}
-  .action-group .hstatus{grid-column:1/-1;grid-row:2}
-  .action-group .hprog{grid-row:3}
   .map-legend{justify-content:flex-start}
 }
 
@@ -479,8 +493,9 @@ tr:last-child td{border-bottom:none}
   .action-group{grid-column:1/-1}
   .radius-group .rbtn{flex-basis:42px}
   .hbtn,.rbtn,.ppbtn{min-height:30px}
-  .filter-toggle,.hbtn-run{height:32px}
-  .header.filters-open .filter-band{max-height:88dvh}
+  .filter-toggle,.mobile-run-band .hbtn-run{height:32px}
+  .header.filters-open .filter-band{max-height:42dvh}
+  .mobile-run-band{padding-block:7px}
 }
 
 </style>
@@ -618,6 +633,10 @@ tr:last-child td{border-bottom:none}
           <span class="kbd">Ctrl</span>+<span class="kbd">E</span> Excel
         </span>
       </div>
+    </div>
+
+    <div class="h-band mobile-run-band">
+      <button class="hbtn hbtn-run" id="mobileRunBtn" type="button" onclick="runAnalysis()">분석 시작</button>
     </div>
 
   </div>
@@ -849,13 +868,13 @@ async function bootstrap(){
   }
   if(API_MODE==='direct'&&!PK){
     setStatus('err','서비스키가 없습니다. 프록시 서버로 실행하거나 PK 값을 넣어주세요.');
-    document.getElementById('runBtn').disabled=true;
+    setRunDisabled(true);
   }
   loadKakaoSdk();
 }
 function mapFail(msg){
   setStatus('err',msg.replace(/<br\s*\/?\s*>/gi,' ').replace(/<[^>]+>/g,''));
-  document.getElementById('runBtn').disabled=true;
+  setRunDisabled(true);
   document.getElementById('map').innerHTML=
     '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-size:13px;text-align:center;line-height:1.8;padding:24px">'+msg+'</div>';
 }
@@ -926,6 +945,7 @@ function initKeyboard(){
     if(e.key==='Escape'){
       hideCard();
       document.getElementById('searchResults').style.display='none';
+      if(document.querySelector('.header').classList.contains('filters-open')){toggleFilters();return;}
       if(document.getElementById('detailPanel').classList.contains('open')){closeDetail();return;}
       if(document.getElementById('bottomPanel').classList.contains('open'))closePanel();
       return;
@@ -1189,8 +1209,14 @@ function toggleFilters(){
   var button=document.getElementById('filterToggle');
   var open=header.classList.toggle('filters-open');
   button.setAttribute('aria-expanded',String(open));
-  button.textContent=open?'조건 닫기':'상세 조건';
+  button.textContent=open?'상세 조건 닫기':'상세 조건';
   scheduleMapRelayout();
+}
+function setRunDisabled(disabled){
+  ['runBtn','mobileRunBtn'].forEach(function(id){
+    var button=document.getElementById(id);
+    if(button)button.disabled=disabled;
+  });
 }
 window.addEventListener('resize',scheduleMapRelayout);
 
@@ -2130,6 +2156,7 @@ async function runAnalysis(){
   if(!curLawd){setStatus('err','잠시 후 다시 시도해주세요.');return;}
   var start=getYm('start'),end=getYm('end'),type=document.getElementById('selType').value;
   if(parseInt(start)>parseInt(end)){setStatus('err','시작 기간이 종료보다 늦습니다.');return;}
+  if(window.matchMedia('(max-width:900px)').matches&&document.querySelector('.header').classList.contains('filters-open'))toggleFilters();
 
   aptMks.forEach(m=>m.setMap(null));aptMks=[];
   oftMks.forEach(m=>m.setMap(null));oftMks=[];
@@ -2142,7 +2169,7 @@ async function runAnalysis(){
   bunyangMarkers.forEach(m=>m.setMap(null));bunyangMarkers=[];
   bunyangOverlays.forEach(o=>o.setMap(null));bunyangOverlays=[];
   document.getElementById('selectBar').style.display='none';
-  document.getElementById('runBtn').disabled=true;
+  setRunDisabled(true);
   showVeil(true);
   setProg(0,'데이터 수집 중...');
 
@@ -2408,7 +2435,7 @@ async function runAnalysis(){
     renderSelectBar();
   }catch(e){setStatus('err','오류: '+e.message);console.error(e);}
   showVeil(false);
-  document.getElementById('runBtn').disabled=false;
+  setRunDisabled(false);
 }
 
 // ── 패널 열기/닫기 ──
